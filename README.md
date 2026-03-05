@@ -14,3 +14,13 @@ Réalisation d'un programme qui :
 
 Compile : g++ multi-matriciel.cpp -o multi-matriciel
 
+
+
+
+TP 2 Matrix: Multithreading
+Réalisation d'un programme qui : 
+1.  Fait la même chose que l’exercice 1
+2. Le calcul est cette fois réalisé par des threads
+3. Instanciation d’un thread par case de la matrice C
+
+g++ main.cpp -std=c++20 -o main   pour compiler avec le compilateur c++20
