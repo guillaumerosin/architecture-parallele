@@ -13,9 +13,15 @@ int main() {
     std::cout << "N =" << N << std::endl;
     
     
-    std::vector<int> BRYAN_IS_IN_THE_KITCHEN(N * N);  //Création de ma matrice
-    M[i * N + j] = 3;
-    int x = M[i * N + j];
+    int* Matrice = new int[row * col];
 
-    
+    for (int i = 0; i < row ; i++) {
+        for (int j = 0; j < col; j++) {
+            Matrice[i * col +j] = i * cols +j    // accès à la case i,j de la matrice + ce qu'on y écrit 
+        }
+        int x = Matrice[2 * cols +3]
+        std::cout << x << std::endl;
+        delete[] Matrice;
+        return 0;
+    }
 }
