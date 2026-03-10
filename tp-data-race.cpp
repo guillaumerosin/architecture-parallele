@@ -7,7 +7,7 @@
 #include <atomic>
 //-----------------------------------
 
-#define N 1000*1000*10
+#define N 1000*1000*10   //nombres d'itérations
 #define W 4
 #define CLOCK std::chrono::steady_clock
 //-----------------------------------
@@ -117,29 +117,31 @@ void worker_atomic(int n)
 {
 	for (int i = 0; i < n; ++i)
 	{
-		//ATOMIC ADD
+		xa.fetch_add(1, std::memory_order_relaxed);
 	}
 }
 
 void worker_spinlock(int n)
 {
+	
 	for (int i = 0; i < n; ++i)
 	{
-		//SPINLOCK LOCK
+		spinlock.lock
 		x++;
-		//SPINLOCK UNLOCK
+		spinlock.unlock
 	}
+	
 }
 
 
 void worker_spinlock_all(int n)
 {
-	//SPINLOCK LOCK
+	spinlock.lock
 	for (int i = 0; i < n; ++i)
 	{
 		x++;
 	}
-	//SPINLOCK UNLOCK
+	spinlock.unlock
 }
 
 void launch_threads(std::function<void(int)> f, int n, int n_threads, std::string name, bool atomic = false)

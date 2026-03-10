@@ -14,7 +14,7 @@ Réalisation d'un programme qui :
 
 Compile : g++ multi-matriciel.cpp -o multi-matriciel
 
-
+----------------------------------------------------------------
 
 
 TP 2 Matrix: Multithreading
@@ -24,3 +24,14 @@ Réalisation d'un programme qui :
 3. Instanciation d’un thread par case de la matrice C
 
 g++ main.cpp -std=c++20 -o main   pour compiler avec le compilateur c++20
+
+-----------------------------------------------------------------
+ 
+TP 4: Matrix :Veuillez réaliser un programme qui :
+1. Fait la même chose que l’exercice 1
+2. Le calcul est cette fois réalisé par des threads
+3. Le nombre de threads à instancier est demandé à l’utilisateur
+Version A du TP : distribution alternée des threads :
+Version A du TP : distribution contiguë des threads :
+Conservez bien votre programme, car vous allez en avoir besoin plus tard (dossier à réaliser)
+[0.25T, 0.5T, 0.75T, T, 1.5T, 2T] où T= Threads de votre CPU
