@@ -5,6 +5,8 @@
 
 #include <thread>
 #include <vector>
+#include <sys/resource.h>
+#include <iomanip>
 
 // générateur aléatoire global pour remplir les matrices
 std::random_device rd;
@@ -46,6 +48,11 @@ int main(void) {
     }
 
     // 4. mesurer uniquement le temps de calcul de C = A * B
+
+    // snapshot CPU avant
+    rusage usage_before{};
+    getrusage(RUSAGE_SELF, &usage_before);
+
     std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
 
     std::vector<std::thread> threads;
@@ -59,9 +66,31 @@ int main(void) {
 
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     std::chrono::duration<double, std::milli> duree_ms = end - start;
+    std::chrono::duration<double> duree_s = end - start;
 
-    // 5. afficher la durée du calcul uniquement
+    // snapshot CPU après
+    rusage usage_after{};
+    getrusage(RUSAGE_SELF, &usage_after);
+
+    double cpu_before =
+        usage_before.ru_utime.tv_sec + usage_before.ru_utime.tv_usec / 1e6 +
+        usage_before.ru_stime.tv_sec + usage_before.ru_stime.tv_usec / 1e6;
+
+    double cpu_after =
+        usage_after.ru_utime.tv_sec + usage_after.ru_utime.tv_usec / 1e6 +
+        usage_after.ru_stime.tv_sec + usage_after.ru_stime.tv_usec / 1e6;
+
+    double cpu_time = cpu_after - cpu_before;
+    double cpu_percent = (cpu_time / duree_s.count()) * 100.0;
+
+    double mem_mb = usage_after.ru_maxrss / 1024.0;
+
+    // 5. afficher les mesures
     cout << "Durée du calcul C = A * B : " << duree_ms.count() << " ms" << endl;
+    cout << "Durée du calcul C = A * B : " << duree_s.count() << " s" << endl;
+    cout << "CPU utilise : " << std::fixed << std::setprecision(2) << cpu_percent << " %" << std::endl;
+    cout.unsetf(std::ios::fixed);
+    cout << "Memoire max : " << mem_mb << " Mo" << std::endl;
 
     // 6. désallouer les matrices
     delete[] A;

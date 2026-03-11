@@ -6,9 +6,9 @@
 int main() {
 
     int N;
-    std::cout << "Il était une fois, dans un monde sans Bryan\n";
-    std::cout << "Un monde stable... équilibré...  \n";
-    std::cout << "Entre une valeur entiere N";
+    std::cout << "Il était une fois, un monde stable... équilibré...\n";
+    std::cout << "Un monde sans Bryan  \n";
+    std::cout << "Entre une valeur entiere N pour que je définisse la taille de la matrice ma loute";
     std::cin >> N;
     std::cout << "N =" << N << std::endl;
     
