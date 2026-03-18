@@ -4,6 +4,16 @@
 #include <random>
 #include <sys/resource.h>
 #include <thread>
+std::cout << "Il était une fois, un monde stable... équilibré...\n";
+std::cout << "Un monde sans Bryan  \n";
+std::cout << "Entre une valeur entiere N pour que je définisse la taille de la matrice ma loute";
+std::cin >> N;
+std::cout << "N =" << N << std::endl;
+
+
+int* Matrice = new int[row * col];
+=======
+>>>>>>> Stashed changes
 #include <vector>
 
 using namespace std;
