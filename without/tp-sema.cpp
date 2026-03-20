@@ -1,5 +1,4 @@
 // TP Sémaphore : 3 writers, 2 readers, buffer circulaire
-
 #include <iostream>
 #include <thread>
 #include <semaphore>
@@ -26,22 +25,21 @@ int write_pos = 0;
 int read_pos = 0;
 
 // Sémaphores :
-// - semEmpty : nombre de cases libres
-// - semFull  : nombre de cases remplies
-std::counting_semaphore<BUFFER_SIZE> semEmpty(BUFFER_SIZE);
-std::counting_semaphore<BUFFER_SIZE> semFull(0);
+std::counting_semaphore<BUFFER_SIZE> semEmpty(BUFFER_SIZE);  // - semEmpty : unitialise le nombre de cases libres
+std::counting_semaphore<BUFFER_SIZE> semFull(0);  // - semFull  : nombre de cases remplies
 
 // Mutex pour protéger les accès concurrents aux index/buffer
-std::mutex write_mutex;
-std::mutex read_mutex;
+std::mutex write_mutex; //permet de protéger l'écriture dans mon buffer 
+std::mutex read_mutex; //permet de protéger la lecture de mon buffer
 
-// Nombre de cases non encore lues (demandé par l'énoncé)
+// Nombre de cases non encore lues (me permet de compter combien de valeurs
+//produites n'ont pas encore été lues dans le buffer)
 std::atomic<int> unread_count{0};
 
 // Indique que tous les writers ont terminé
 std::atomic<bool> writers_done{false};
 
-void writer(int id) {
+void writer(int id) {   //les threads writers
     for (int n = 0; n < VALUES_PER_WRITER; ++n) {
         // Simuler une production de donnée
         int value = id * 1000 + n; // juste pour identifier qui a écrit quoi
@@ -59,9 +57,6 @@ void writer(int id) {
         // Une nouvelle valeur est disponible à la lecture
         unread_count.fetch_add(1, std::memory_order_relaxed);
         semFull.release();
-
-        // (Optionnel) petite pause pour mieux voir l'ordonnancement
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
 
@@ -114,15 +109,15 @@ int main() {
     std::vector<std::thread> writers;
     writers.reserve(NB_WRITERS);
     for (int i = 0; i < NB_WRITERS; ++i) {
-        writers.emplace_back(writer, i);
+        writers.emplace_back(writer, i);   //chaque writer à un id unique
     }
 
     // Création des readers
     std::vector<std::thread> readers;
     readers.reserve(NB_READERS);
     for (int i = 0; i < NB_READERS; ++i) {
-        readers.emplace_back(reader, i);
-    }
+        readers.emplace_back(reader, i);  //chaque reader à un id unique
+    } 
 
     // Attendre la fin de tous les writers
     for (auto &t : writers) {

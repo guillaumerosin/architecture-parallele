@@ -46,16 +46,14 @@ int main(void) {
         }
         C[i * N + j] = sum;
     };
-
+    std::vector<std::thread> threads;  //je déclare un contenaire qui va stocker mes threads 
     for (int i = 0; i < N; ++i) {
         for (int j = 0; j < N; ++j) {
-
-
-            std::thread t(compute_cell, i, j);   //ici c'est du séquenciel! CAVAPAS!  Je crée mes threads puis je joins
-            t.join(); // je crée une boucle qui crée des joins (code degueu c'est le but) 
-        
+            threads.emplace_back(compute_cell, i, j);  
         }
     }
+    for (auto &t : threads)
+        t.join();
     // 6. Chrono fin
     auto end = std::chrono::steady_clock::now();
     std::chrono::duration<double> duree_s = end - start;
