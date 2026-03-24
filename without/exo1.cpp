@@ -6,7 +6,6 @@ int main(void) {
     int N;
 
     std::cout << "entre une valeur N:\n";
-
     std::cin >> N;
 
     int *A = new int[N * N]; //je définis ma matrice

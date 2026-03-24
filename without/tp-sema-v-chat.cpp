@@ -10,6 +10,7 @@
 
 // Taille du buffer circulaire
 constexpr int BUFFER_SIZE = 10;
+
 // Nombre de threads writers et readers
 constexpr int NB_WRITERS = 3;
 constexpr int NB_READERS = 2;

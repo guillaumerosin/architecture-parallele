@@ -18,7 +18,9 @@ int main() {
     float** C         = new float*[N];
     float** B_transpo = new float*[N];
 
-    srand(time(NULL));
+    srand(time(NULL)); //initialise le générateur de nombres aléatoires
+    //time(NULL) c'est quoi? retourne l'heure courante.
+    //scrand() = graine pour le 
 
     // Initialisation de A, B et C
     for (int i = 0; i < N; i++) {
