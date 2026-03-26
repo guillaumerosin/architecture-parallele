@@ -44,7 +44,7 @@ void writer(int id) {   //les threads writers
         int value = id * 1000 + n; // juste pour identifier qui a écrit quoi
 
         // Attendre une case libre dans le buffer
-        semEmpty.acquire();
+        semEmpty.try_acquire();
 
         {
             std::lock_guard<std::mutex> lock(write_mutex);
