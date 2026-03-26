@@ -9,9 +9,9 @@ int main() {
     std::cout << "Entre une valeur N:\n";
     std::cin >> N;
 
-    // Générateur de nombres aléatoires
+    // Mon générateur de nombres aléatoires
     std::mt19937 gen(std::random_device{}());
-    std::uniform_int_distribution<int> dis(1, 10);
+    std::uniform_int_distribution<int> dis(1, 100);
 
     int *A = new int[N * N];
     int *B = new int[N * N];
@@ -42,7 +42,7 @@ int main() {
         }
     }
 
-    // Chrono end
+    // fin du chrono 
     auto end = std::chrono::steady_clock::now();
     std::chrono::duration<double> duree_s = end - start;
 
