@@ -2,10 +2,23 @@
 #include <chrono>
 #include <iomanip>
 #include <random>
-#include <sys/resource.h>
+#include <windows.h>
+#include <psapi.h>
 #include <immintrin.h>   // _mm_malloc / _mm_free
 
 using namespace std;
+
+static double get_cpu_time_s() {
+    FILETIME creation, exit, kernel, user;
+    GetProcessTimes(GetCurrentProcess(), &creation, &exit, &kernel, &user);
+    auto to_sec = [](FILETIME ft) {
+        ULARGE_INTEGER ui;
+        ui.LowPart  = ft.dwLowDateTime;
+        ui.HighPart = ft.dwHighDateTime;
+        return ui.QuadPart / 1e7;
+    };
+    return to_sec(user) + to_sec(kernel);
+}
 
 int main() {
     int N = 0;
@@ -60,8 +73,7 @@ int main() {
     }
 
     // Snapshot CPU avant le calcul
-    rusage usage_before{};
-    getrusage(RUSAGE_SELF, &usage_before);
+    double cpu_before = get_cpu_time_s();
 
     // Mesure du temps — uniquement le calcul C = A * B
     chrono::steady_clock::time_point start = chrono::steady_clock::now();
@@ -86,19 +98,13 @@ int main() {
     chrono::duration<double, milli> duree_ms = end - start;
 
     // Snapshot CPU après le calcul
-    rusage usage_after{};
-    getrusage(RUSAGE_SELF, &usage_after);
-
-    double cpu_before =
-        usage_before.ru_utime.tv_sec + usage_before.ru_utime.tv_usec / 1e6 +
-        usage_before.ru_stime.tv_sec + usage_before.ru_stime.tv_usec / 1e6;
-
-    double cpu_after =
-        usage_after.ru_utime.tv_sec + usage_after.ru_utime.tv_usec / 1e6 +
-        usage_after.ru_stime.tv_sec + usage_after.ru_stime.tv_usec / 1e6;
+    double cpu_after = get_cpu_time_s();
 
     double cpu_percent = ((cpu_after - cpu_before) / duree_s.count()) * 100.0;
-    double mem_mb      = usage_after.ru_maxrss / 1024.0;
+
+    PROCESS_MEMORY_COUNTERS pmc{};
+    GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
+    double mem_mb = pmc.PeakWorkingSetSize / (1024.0 * 1024.0);
 
     cout << "Duree du calcul C = A * B : " << duree_ms.count() << " ms" << endl;
     cout << "Duree du calcul C = A * B : " << duree_s.count()  << " s"  << endl;

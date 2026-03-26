@@ -37,7 +37,6 @@ int main() {
         }
     }
 
-    // Snapshot CPU avant calcul
     rusage usage_before{};
     getrusage(RUSAGE_SELF, &usage_before);
 
@@ -59,11 +58,9 @@ int main() {
         }
     }
 
-    // Fin du chrono
     auto end = std::chrono::steady_clock::now();
     std::chrono::duration<double> duree_s = end - start;
 
-    // Snapshot CPU après calcul
     rusage usage_after{};
     getrusage(RUSAGE_SELF, &usage_after);
 
@@ -88,7 +85,6 @@ int main() {
     std::cout.unsetf(std::ios::fixed);
     std::cout << "Mémoire utilisée : " << mem_mb << " Mo\n";
 
-    // Désallocation
     delete[] A;
     delete[] B;
     delete[] BT;
