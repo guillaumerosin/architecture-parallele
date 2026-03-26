@@ -2,11 +2,24 @@
 #include <chrono>
 #include <random>
 #include <iomanip>
-#include <sys/resource.h>
+#include <windows.h>
+#include <psapi.h>
+
+static double get_cpu_time_s() {
+    FILETIME creation, exit, kernel, user;
+    GetProcessTimes(GetCurrentProcess(), &creation, &exit, &kernel, &user);
+    auto to_sec = [](FILETIME ft) {
+        ULARGE_INTEGER ui;
+        ui.LowPart  = ft.dwLowDateTime;
+        ui.HighPart = ft.dwHighDateTime;
+        return ui.QuadPart / 1e7;
+    };
+    return to_sec(user) + to_sec(kernel);
+}
 
 int main() {
     int N;
-    std::cout << "Entre une valeur N:\n";
+    std::cout << "Entre une valeur N:" << std::endl;
     std::cin >> N;
 
     // Générateur de nombres aléatoires
@@ -19,14 +32,13 @@ int main() {
 
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
-            A[i * N + j] = dis(gen);  
+            A[i * N + j] = dis(gen);
             B[i * N + j] = dis(gen);
         }
     }
 
     // Snapshot CPU avant calcul
-    rusage usage_before{};
-    getrusage(RUSAGE_SELF, &usage_before);
+    double cpu_before = get_cpu_time_s();
 
     // Chrono start
     auto start = std::chrono::steady_clock::now();
@@ -47,23 +59,15 @@ int main() {
     std::chrono::duration<double> duree_s = end - start;
 
     // Snapshot CPU après calcul
-    rusage usage_after{};
-    getrusage(RUSAGE_SELF, &usage_after);
-
-    // Calcul du % CPU
-    double cpu_before =                                        
-        usage_before.ru_utime.tv_sec + usage_before.ru_utime.tv_usec / 1e6 +
-        usage_before.ru_stime.tv_sec + usage_before.ru_stime.tv_usec / 1e6;
-
-    double cpu_after =                                          
-        usage_after.ru_utime.tv_sec + usage_after.ru_utime.tv_usec / 1e6 +
-        usage_after.ru_stime.tv_sec + usage_after.ru_stime.tv_usec / 1e6;
+    double cpu_after = get_cpu_time_s();
 
     double cpu_time    = cpu_after - cpu_before;
     double cpu_percent = (cpu_time / duree_s.count()) * 100.0;
 
     // Mémoire en Mo
-    double mem_mb = usage_after.ru_maxrss / 1024.0;
+    PROCESS_MEMORY_COUNTERS pmc{};
+    GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
+    double mem_mb = pmc.PeakWorkingSetSize / (1024.0 * 1024.0);
 
     std::cout << "Durée C = A * B : " << duree_s.count() << " s\n";
     std::cout << "CPU utilisé : " << std::fixed << std::setprecision(2)
