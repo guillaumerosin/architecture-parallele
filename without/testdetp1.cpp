@@ -47,7 +47,8 @@ int main() {
 
     // Mesure du temps de fin
     end = chrono::system_clock::now();
-    long long int microseconds = chrono::duration_cast<chrono::microseconds>(end - start).count();
+    lon    // 7. désallouer les matrices
+    g long int microseconds = chrono::duration_cast<chrono::microseconds>(end - start).count();
     cout << "Temps d'execution : " << microseconds << " micro sec\n";
 
     // Libération de la mémoire
