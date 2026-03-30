@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(g++ -O2 -o windows/04.tp3-wind.exe windows/04.tp3-wind.cpp -lpsapi)",
+      "Bash(g++ -O2 -o windows/05.tp4-wind.exe windows/05.tp4-wind.cpp -lpsapi)"
+    ]
+  }
+}
