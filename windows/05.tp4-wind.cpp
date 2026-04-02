@@ -26,11 +26,7 @@ std::random_device rd;
 std::mt19937 gen(rd());
 std::uniform_int_distribution<> dis(1, 100);
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Version A : distribution ALTERNÉE des lignes de C entre les threads
-// Exemple (4 threads, 5 lignes) :
-//   ligne 0 → T0 | ligne 1 → T1 | ligne 2 → T2 | ligne 3 → T3 | ligne 4 → T0
-// ─────────────────────────────────────────────────────────────────────────────
+
 void worker_alternated(const int* A, const int* B, int* C,
                        int N, int threadId, int nbThreads)
 {
