@@ -13,11 +13,6 @@ std::random_device rd;
 std::mt19937 gen(rd());
 std::uniform_int_distribution<> dis(1, 100);
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Version A : distribution ALTERNÉE des lignes de C entre les threads
-// Exemple (4 threads, 5 lignes) :
-//   ligne 0 → T0 | ligne 1 → T1 | ligne 2 → T2 | ligne 3 → T3 | ligne 4 → T0
-// ─────────────────────────────────────────────────────────────────────────────
 void worker_alternated(const int* A, const int* B, int* C,
                        int N, int threadId, int nbThreads)
 {
@@ -32,11 +27,6 @@ void worker_alternated(const int* A, const int* B, int* C,
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Version B : distribution CONTIGUË des lignes de C entre les threads
-// Exemple (4 threads, 8 lignes) :
-//   T0 → lignes 0-1 | T1 → lignes 2-3 | T2 → lignes 4-5 | T3 → lignes 6-7
-// ─────────────────────────────────────────────────────────────────────────────
 void worker_contiguous(const int* A, const int* B, int* C,
                        int N, int threadId, int nbThreads)
 {
@@ -77,14 +67,14 @@ int main() {
         }
     }
 
-    // afficher le nombre de threads logiques du CPU
+
     unsigned int T = thread::hardware_concurrency();
     cout << "Threads logiques detectes sur ce CPU : " << T << endl;
     cout << "Valeurs suggerees par le cours : "
          << T / 4 << ", " << T / 2 << ", "
          << T     << ", " << T * 2 << " threads" << endl;
 
-    // Demander le nombre de threads à utiliser
+    // Je demande le nombre de threads à utiliser
     int nbThreads = 0;
     cout << "Entrez le nombre de threads a utiliser : ";
     cin >> nbThreads;
@@ -97,14 +87,14 @@ int main() {
     cout << "Votre choix : ";
     cin >> mode;
 
-    //Snapshot CPU avant le calcul
+  
     rusage usage_before{};
     getrusage(RUSAGE_SELF, &usage_before);
 
     // Mesure du temps — uniquement le calcul
     auto start = chrono::steady_clock::now();
 
-    // Création des threads
+   
     vector<thread> threads;
     threads.reserve(nbThreads);
 

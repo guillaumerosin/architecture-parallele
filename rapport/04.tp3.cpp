@@ -28,7 +28,6 @@ void compute_line(const int* A, const int* B, int* C, int N, int i) {
 
 int main() {
 
-    // 1. Demander N à l'utilisateur
     int N = 0;
     std::printf("Entrez la taille N des matrices : ");
     if (std::scanf("%d", &N) != 1 || N <= 0) {
