@@ -1,4 +1,5 @@
 #include "cuda_runtime.h"
+#include "device_launch_parameters.h"
 #include <stdio.h>
 #include <iostream>
 #include <chrono>
@@ -9,36 +10,6 @@ using namespace std;
 
 #define BLOCK 128
 #define THREADS 128
-
-#define CUDA_CHECK(call)                                                         \
-    do                                                                           \
-    {                                                                            \
-        cudaError_t err__ = (call);                                              \
-        if (err__ != cudaSuccess)                                                \
-        {                                                                        \
-            fprintf(stderr, "CUDA error %s:%d: %s\n", __FILE__, __LINE__,      \
-                    cudaGetErrorString(err__));                                  \
-            exit(EXIT_FAILURE);                                                  \
-        }                                                                        \
-    } while (0)
-
-static void checkCudaRuntimeDriverCompatibility()
-{
-    int runtimeVersion = 0;
-    int driverVersion = 0;
-
-    CUDA_CHECK(cudaRuntimeGetVersion(&runtimeVersion));
-    CUDA_CHECK(cudaDriverGetVersion(&driverVersion));
-
-    if (driverVersion < runtimeVersion)
-    {
-        fprintf(stderr,
-                "Incompatibilite CUDA: driver=%d runtime=%d. "
-                "Mets a jour le driver NVIDIA ou compile avec un toolkit CUDA <= driver.\n",
-                driverVersion, runtimeVersion);
-        exit(EXIT_FAILURE);
-    }
-}
 
 void printMatrix(int *d_matC, int Width)
 {
@@ -75,24 +46,18 @@ __global__ void matriceproductkernel(int *d_matA, int *d_matB, int *d_matC, int 
 
 int main()
 {
-    checkCudaRuntimeDriverCompatibility();
-
     int Width;
     int blocksCount = BLOCK;
     int threadsPerBlock = THREADS;
 
     srand(time(NULL));
 
+    chrono::time_point<std::chrono::system_clock> start, end;
+
     printf("Taille de la matrice ? ");
     scanf("%d", &Width);
 
-    if (Width <= 0)
-    {
-        printf("Taille invalide.\n");
-        return 1;
-    }
-
-    const size_t size = (size_t)Width * (size_t)Width * sizeof(int);
+    const int size = Width * Width * sizeof(int);
 
     int *h_matA, *h_matB, *h_matC;
 
@@ -118,9 +83,9 @@ int main()
     // Allocation mémoire sur le device
     int *d_matA, *d_matB, *d_matC;
 
-    CUDA_CHECK(cudaMalloc((void**)&d_matA, size));
-    CUDA_CHECK(cudaMalloc((void**)&d_matB, size));
-    CUDA_CHECK(cudaMalloc((void**)&d_matC, size));
+    cudaMalloc((void**)&d_matA, size);
+    cudaMalloc((void**)&d_matB, size);
+    cudaMalloc((void**)&d_matC, size);
 
     // Lancement du kernel
     printf("Nombre de blocs ? (0 = %d) ", BLOCK);
@@ -139,38 +104,38 @@ int main()
     auto totalStart = std::chrono::system_clock::now();
 
     // Transferts CPU -> GPU
-    CUDA_CHECK(cudaMemcpy(d_matA, h_matA, size, cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_matB, h_matB, size, cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_matC, h_matC, size, cudaMemcpyHostToDevice));
+    cudaMemcpy(d_matA, h_matA, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_matB, h_matB, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_matC, h_matC, size, cudaMemcpyHostToDevice);
 
     // Warm-up pour stabiliser la mesure
     matriceproductkernel<<<blocks, nThreadsPerBlocks>>>(d_matA, d_matB, d_matC, Width);
-    CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    cudaDeviceSynchronize();
 
-    auto kernelStart = std::chrono::system_clock::now();
+    start = std::chrono::system_clock::now();
     matriceproductkernel<<<blocks, nThreadsPerBlocks>>>(d_matA, d_matB, d_matC, Width);
-    CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
-    auto kernelStop = std::chrono::system_clock::now();
+    cudaDeviceSynchronize();
+    end = std::chrono::system_clock::now();
 
-    double elapsedSeconds = std::chrono::duration<double>(kernelStop - kernelStart).count();
+    cudaError_t launchError = cudaGetLastError();
+    if (launchError != cudaSuccess)
+    {
+        printf("\nErreur CUDA kernel: %s\n", cudaGetErrorString(launchError));
+    }
+
+    double elapsedSeconds = std::chrono::duration<double>(end - start).count();
     printf("\nChrono kernel : %.9f s", elapsedSeconds);
 
     // Transfert GPU -> CPU
-    CUDA_CHECK(cudaMemcpy(h_matC, d_matC, size, cudaMemcpyDeviceToHost));
+    cudaMemcpy(h_matC, d_matC, size, cudaMemcpyDeviceToHost);
 
     auto totalEnd = std::chrono::system_clock::now();
     double totalSeconds = std::chrono::duration<double>(totalEnd - totalStart).count();
     printf("\nChrono total avec transferts : %.9f s\n", totalSeconds);
 
-    CUDA_CHECK(cudaFree(d_matA));
-    CUDA_CHECK(cudaFree(d_matB));
-    CUDA_CHECK(cudaFree(d_matC));
-
-    free(h_matA);
-    free(h_matB);
-    free(h_matC);
+    cudaFree(d_matA);
+    cudaFree(d_matB);
+    cudaFree(d_matC);
 
     return 0;
 }
