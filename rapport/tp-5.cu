@@ -49,7 +49,6 @@ int main()
     int Width;
     int blocksCount = BLOCK;
     int threadsPerBlock = THREADS;
-    int repetitions = 100;
 
     srand(time(NULL));
 
@@ -99,11 +98,6 @@ int main()
     if (threadsPerBlock <= 0)
         threadsPerBlock = THREADS;
 
-    printf("Nombre de repetitions du kernel ? (0 = 100) ");
-    scanf("%d", &repetitions);
-    if (repetitions <= 0)
-        repetitions = 100;
-
     dim3 blocks(blocksCount, 1, 1);
     dim3 nThreadsPerBlocks(threadsPerBlock, 1, 1);
 
@@ -114,21 +108,14 @@ int main()
     cudaMemcpy(d_matB, h_matB, size, cudaMemcpyHostToDevice);
     cudaMemcpy(d_matC, h_matC, size, cudaMemcpyHostToDevice);
 
-    cudaEvent_t kernelStart, kernelStop;
-    cudaEventCreate(&kernelStart);
-    cudaEventCreate(&kernelStop);
-
     // Warm-up pour stabiliser la mesure
     matriceproductkernel<<<blocks, nThreadsPerBlocks>>>(d_matA, d_matB, d_matC, Width);
     cudaDeviceSynchronize();
 
-    cudaEventRecord(kernelStart);
-    for (int r = 0; r < repetitions; ++r)
-    {
-        matriceproductkernel<<<blocks, nThreadsPerBlocks>>>(d_matA, d_matB, d_matC, Width);
-    }
-    cudaEventRecord(kernelStop);
-    cudaEventSynchronize(kernelStop);
+    auto kernelStart = std::chrono::system_clock::now();
+    matriceproductkernel<<<blocks, nThreadsPerBlocks>>>(d_matA, d_matB, d_matC, Width);
+    cudaDeviceSynchronize();
+    auto kernelStop = std::chrono::system_clock::now();
 
     cudaError_t launchError = cudaGetLastError();
     if (launchError != cudaSuccess)
@@ -136,13 +123,8 @@ int main()
         printf("\nErreur CUDA kernel: %s\n", cudaGetErrorString(launchError));
     }
 
-    float elapsedMs = 0.0f;
-    cudaEventElapsedTime(&elapsedMs, kernelStart, kernelStop);
-    double avgKernelSeconds = (elapsedMs / 1000.0) / repetitions;
-    printf("\nChrono kernel moyen (%d repetitions) : %.9f s", repetitions, avgKernelSeconds);
-
-    cudaEventDestroy(kernelStart);
-    cudaEventDestroy(kernelStop);
+    double elapsedSeconds = std::chrono::duration<double>(kernelStop - kernelStart).count();
+    printf("\nChrono kernel : %.9f s", elapsedSeconds);
 
     // Transfert GPU -> CPU
     cudaMemcpy(h_matC, d_matC, size, cudaMemcpyDeviceToHost);
