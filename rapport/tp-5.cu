@@ -1,9 +1,10 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
-
 #include <stdio.h>
 #include <iostream>
 #include <chrono>
+#include <cstdlib>
+#include <ctime>
 
 using namespace std;
 
@@ -26,20 +27,19 @@ void printMatrix(int *d_matC, int Width)
 __global__ void matriceproductkernel(int *d_matA, int *d_matB, int *d_matC, int Width)
 {
     int id = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
 
     if (id < Width * Width)
     {
-        int iterator = 0;
-        int id_bis = id;
-        while (id_bis < Width * Width)
+        for (int id_bis = id; id_bis < Width * Width; id_bis += stride)
         {
+            int sum = 0;
             for (int i = 0; i < Width; i++)
             {
-                d_matC[id_bis] += d_matA[id_bis - id_bis % Width + i] *
-                                   d_matB[id_bis % Width + i * Width];
+                sum += d_matA[id_bis - id_bis % Width + i] *
+                       d_matB[id_bis % Width + i * Width];
             }
-            iterator++;
-            id_bis = id + BLOCK * THREADS * iterator;
+            d_matC[id_bis] = sum;
         }
     }
 }
@@ -47,6 +47,8 @@ __global__ void matriceproductkernel(int *d_matA, int *d_matB, int *d_matC, int 
 int main()
 {
     int Width;
+    int blocksCount = BLOCK;
+    int threadsPerBlock = THREADS;
 
     srand(time(NULL));
 
@@ -85,14 +87,26 @@ int main()
     cudaMalloc((void**)&d_matB, size);
     cudaMalloc((void**)&d_matC, size);
 
-    // Copie des matrices A et B vers le device
+    // Lancement du kernel
+    printf("Nombre de blocs ? (0 = %d) ", BLOCK);
+    scanf("%d", &blocksCount);
+    if (blocksCount <= 0)
+        blocksCount = BLOCK;
+
+    printf("Threads par bloc ? (0 = %d) ", THREADS);
+    scanf("%d", &threadsPerBlock);
+    if (threadsPerBlock <= 0)
+        threadsPerBlock = THREADS;
+
+    dim3 blocks(blocksCount, 1, 1);
+    dim3 nThreadsPerBlocks(threadsPerBlock, 1, 1);
+
+    auto totalStart = std::chrono::system_clock::now();
+
+    // Transferts CPU -> GPU
     cudaMemcpy(d_matA, h_matA, size, cudaMemcpyHostToDevice);
     cudaMemcpy(d_matB, h_matB, size, cudaMemcpyHostToDevice);
     cudaMemcpy(d_matC, h_matC, size, cudaMemcpyHostToDevice);
-
-    // Lancement du kernel
-    dim3 blocks(BLOCK, 1, 1);
-    dim3 nThreadsPerBlocks(THREADS, 1, 1);
 
     start = std::chrono::system_clock::now();
 
@@ -101,10 +115,15 @@ int main()
     cudaDeviceSynchronize();
 
     end = std::chrono::system_clock::now();
-    double microseconds = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-    printf("\nChrono : %f", microseconds / 1000000.0);
+    double seconds = std::chrono::duration<double>(end - start).count();
+    printf("\nChrono : %f s", seconds);
 
+    // Transfert GPU -> CPU
     cudaMemcpy(h_matC, d_matC, size, cudaMemcpyDeviceToHost);
+
+    auto totalEnd = std::chrono::system_clock::now();
+    double totalSeconds = std::chrono::duration<double>(totalEnd - totalStart).count();
+    printf("\nChrono total avec transferts : %f s", totalSeconds);
 
     cudaFree(d_matA);
     cudaFree(d_matB);
