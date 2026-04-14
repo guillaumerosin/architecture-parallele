@@ -49,6 +49,7 @@ int main()
     int Width;
     int blocksCount = BLOCK;
     int threadsPerBlock = THREADS;
+    int repetitions = 100;
 
     srand(time(NULL));
 
@@ -98,6 +99,11 @@ int main()
     if (threadsPerBlock <= 0)
         threadsPerBlock = THREADS;
 
+    printf("Nombre de repetitions du kernel ? (0 = 100) ");
+    scanf("%d", &repetitions);
+    if (repetitions <= 0)
+        repetitions = 100;
+
     dim3 blocks(blocksCount, 1, 1);
     dim3 nThreadsPerBlocks(threadsPerBlock, 1, 1);
 
@@ -108,22 +114,42 @@ int main()
     cudaMemcpy(d_matB, h_matB, size, cudaMemcpyHostToDevice);
     cudaMemcpy(d_matC, h_matC, size, cudaMemcpyHostToDevice);
 
-    start = std::chrono::system_clock::now();
+    cudaEvent_t kernelStart, kernelStop;
+    cudaEventCreate(&kernelStart);
+    cudaEventCreate(&kernelStop);
 
+    // Warm-up pour stabiliser la mesure
     matriceproductkernel<<<blocks, nThreadsPerBlocks>>>(d_matA, d_matB, d_matC, Width);
-
     cudaDeviceSynchronize();
 
-    end = std::chrono::system_clock::now();
-    double seconds = std::chrono::duration<double>(end - start).count();
-    printf("\nChrono : %f s", seconds);
+    cudaEventRecord(kernelStart);
+    for (int r = 0; r < repetitions; ++r)
+    {
+        matriceproductkernel<<<blocks, nThreadsPerBlocks>>>(d_matA, d_matB, d_matC, Width);
+    }
+    cudaEventRecord(kernelStop);
+    cudaEventSynchronize(kernelStop);
+
+    cudaError_t launchError = cudaGetLastError();
+    if (launchError != cudaSuccess)
+    {
+        printf("\nErreur CUDA kernel: %s\n", cudaGetErrorString(launchError));
+    }
+
+    float elapsedMs = 0.0f;
+    cudaEventElapsedTime(&elapsedMs, kernelStart, kernelStop);
+    double avgKernelSeconds = (elapsedMs / 1000.0) / repetitions;
+    printf("\nChrono kernel moyen (%d repetitions) : %.9f s", repetitions, avgKernelSeconds);
+
+    cudaEventDestroy(kernelStart);
+    cudaEventDestroy(kernelStop);
 
     // Transfert GPU -> CPU
     cudaMemcpy(h_matC, d_matC, size, cudaMemcpyDeviceToHost);
 
     auto totalEnd = std::chrono::system_clock::now();
     double totalSeconds = std::chrono::duration<double>(totalEnd - totalStart).count();
-    printf("\nChrono total avec transferts : %f s", totalSeconds);
+    printf("\nChrono total avec transferts : %.9f s\n", totalSeconds);
 
     cudaFree(d_matA);
     cudaFree(d_matB);
