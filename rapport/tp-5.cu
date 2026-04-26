@@ -123,15 +123,15 @@ int main()
         printf("\nErreur CUDA kernel: %s\n", cudaGetErrorString(launchError));
     }
 
-    double elapsedSeconds = std::chrono::duration<double>(end - start).count();
-    printf("\nChrono kernel : %.9f s", elapsedSeconds);
+    double elapsedMs = std::chrono::duration<double, std::milli>(end - start).count();
+    printf("\nChrono kernel : %.6f ms", elapsedMs);
 
     // Transfert GPU -> CPU
     cudaMemcpy(h_matC, d_matC, size, cudaMemcpyDeviceToHost);
 
     auto totalEnd = std::chrono::system_clock::now();
-    double totalSeconds = std::chrono::duration<double>(totalEnd - totalStart).count();
-    printf("\nChrono total avec transferts : %.9f s\n", totalSeconds);
+    double totalMs = std::chrono::duration<double, std::milli>(totalEnd - totalStart).count();
+    printf("\nChrono total avec transferts : %.6f ms\n", totalMs);
 
     cudaFree(d_matA);
     cudaFree(d_matB);

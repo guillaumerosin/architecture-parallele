@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(g++ -O2 -o windows/04.tp3-wind.exe windows/04.tp3-wind.cpp -lpsapi)",
-      "Bash(g++ -O2 -o windows/05.tp4-wind.exe windows/05.tp4-wind.cpp -lpsapi)"
+      "Bash(g++ -O2 -o windows/05.tp4-wind.exe windows/05.tp4-wind.cpp -lpsapi)",
+      "Read(//c/mingw64/bin/**)",
+      "Read(//c/Program Files/mingw64/bin/**)",
+      "Bash(where.exe g++)"
     ]
   }
 }
