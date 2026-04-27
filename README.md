@@ -1,221 +1,233 @@
-# architecture-parallele
-
-TP matrix 1 : multiplication matricielle
-
-Réalisation d'un programme qui : 
-1. demande à l'utilisateur une valeur entière N 
-2. Alloue dynamiquement 3 matrices (A, B et C ) d’entiers et de taille N x N
-3. Remplit les matrices A et B de valeurs (aléatoires ou non)
-4. Effectue la multiplication matricielle C=A*B
-5. Affiche la durée qui a été nécessaire pour le calcul (et exclusivement pour le calcul)
-6. N’oubliez pas de désallouer
-
-# prise de note rapide 
-
-Compile : g++ multi-matriciel.cpp -o multi-matriciel
-
-----------------------------------------------------------------
-
-
-TP 2 Matrix: Multithreading
-Réalisation d'un programme qui : 
-1.  Fait la même chose que l’exercice 1
-2. Le calcul est cette fois réalisé par des threads
-3. Instanciation d’un thread par case de la matrice C
-
-g++ main.cpp -std=c++20 -o main   pour compiler avec le compilateur c++20
-
------------------------------------------------------------------
- 
-TP 4: Matrix :Veuillez réaliser un programme qui :
-1. Fait la même chose que l’exercice 1
-2. Le calcul est cette fois réalisé par des threads
-3. Le nombre de threads à instancier est demandé à l’utilisateur
-Version A du TP : distribution alternée des threads :
-Version A du TP : distribution contiguë des threads :
-Conservez bien votre programme, car vous allez en avoir besoin plus tard (dossier à réaliser)
-[0.25T, 0.5T, 0.75T, T, 1.5T, 2T] où T= Threads de votre CPU
-
-
-# TP Matrix 3 — Multiplication matricielle multithreadée (un thread par ligne)
-
-## Contexte du cours
-
-Ce TP fait partie du chapitre **Architectures parallèles — Multithreading** (Systèmes temps réel).  
-Il s'appuie sur deux blocs de matière : le rappel C/C++ (pointeurs, allocation dynamique) et le multithreading en C++11/20.
+# Matrix Multiplication Report
+**UE: Parallel Architectures — AA: Parallel Computing Lab Work**  
+**Master in Industrial Engineering Sciences — Specialization: Life Data Technologies**  
+**Academic Year: 2025–2026**  
+**Author:** Rosin Guillaume | **Supervisor:** CREMER Samuel
 
 ---
 
-## Ce que le TP demande (slide 51)
+## Table of Contents
 
-> Réaliser un programme qui :
-> 1. Demande à l'utilisateur une valeur entière **N**
-> 2. Alloue dynamiquement 3 matrices (A, B, C) d'entiers de taille N×N
-> 3. Remplit A et B de valeurs (aléatoires ou non)
-> 4. Effectue la multiplication C = A×B **via des threads**
-> 5. **Un thread par ligne de la matrice C** (c'est ce qui distingue le TP3 du TP2 qui lui crée un thread par case)
-> 6. Affiche la durée du calcul (et exclusivement du calcul)
-> 7. Désalloue proprement la mémoire
-
----
-
-## Rappels du cours utilisés dans ce TP
-
-### 1. Allocation dynamique en C++ (slides 17–19)
-
-Les matrices sont des tableaux 1D représentant une grille 2D.  
-L'accès à l'élément ligne `i`, colonne `j` se fait par `tableau[i * N + j]`.
-
-```cpp
-int *A = new int[N * N];   // alloue N*N entiers
-// ...
-delete[] A;                // libère la mémoire (OBLIGATOIRE)
-```
-
-> ⚠️ Le cours insiste : **toujours libérer la mémoire** et **ne jamais mélanger `new`/`free` ou `malloc`/`delete`**.
+- [Equipment](#equipment)
+- [Project Overview](#project-overview)
+- [Tasks Summary](#tasks-summary)
+  - [Task 1 — Sequential](#task-1--sequential)
+  - [Task 1.1 — Optimization 1: Transposed Matrix BT](#task-11--optimization-1-transposed-matrix-bt)
+  - [Task 1.2 — Optimization 2: Float + AVX/FMAD](#task-12--optimization-2-float--avxfmad)
+  - [Task 1.3 — All Three Optimizations Combined](#task-13--all-three-optimizations-combined)
+  - [Task 2 — One Thread per Element](#task-2--one-thread-per-element)
+  - [Task 3 — One Thread per Row](#task-3--one-thread-per-row)
+  - [Task 4 — Dynamic Thread Allocation](#task-4--dynamic-thread-allocation)
+  - [Task 4.1 — Optimization 1: BT Transposition](#task-41--optimization-1-bt-transposition)
+  - [Task 4.2 — Optimization 2: Float + AVX/FMAD](#task-42--optimization-2-float--avxfmad)
+  - [Task 4.3 — Optimization 3: 64-byte Memory Alignment](#task-43--optimization-3-64-byte-memory-alignment)
+  - [Task 5 — CUDA on GPU](#task-5--cuda-on-gpu)
+  - [Task 5.1 — CUDA with Transpose Optimization (BT)](#task-51--cuda-with-transpose-optimization-bt)
+- [Key Results](#key-results)
+- [General Conclusion](#general-conclusion)
 
 ---
 
-### 2. Mesurer le temps (slide 23)
+## Equipment
 
-```cpp
-#include <chrono>
-
-auto start = std::chrono::steady_clock::now();
-// ... calcul ...
-auto end   = std::chrono::steady_clock::now();
-
-std::chrono::duration<double, std::milli> duree = end - start;
-std::cout << duree.count() << " ms" << std::endl;
-```
-
-Le cours demande de mesurer **uniquement** le calcul, pas l'allocation ni l'affichage.
+| Component | Details |
+|---|---|
+| **OS 1** | Debian GNU/Linux 12 (Bookworm) x86_64 |
+| **OS 2** | Windows 11 |
+| **Kernel** | 6.1.0-43-amd64 |
+| **Processor** | 11th Gen Intel Core i7-11700KF (16 threads) @ 4.900GHz |
+| **RAM** | 32 GB |
+| **GPU** | NVIDIA GeForce RTX 3070 Lite Hash Rate |
+| **Compiler** | GCC 12.2.0 |
 
 ---
 
-### 3. std::thread — Multithreading C++11 (slides 24–26)
+## Project Overview
 
-Un thread est une unité d'exécution indépendante au sein d'un même processus.  
-Tous les threads d'un même programme **partagent la mémoire**.
+This project explores and benchmarks different approaches to matrix multiplication in C++, on both CPU and GPU. The goal is to progressively move from a simple sequential implementation to increasingly parallel and optimized solutions.
 
-```cpp
-#include <thread>
+All tests were performed on square matrices of sizes: **100×100, 500×500, 1000×1000, 1500×1500, 2000×2000** — on the same physical machine running both Debian Linux and Windows 11.
 
-void ma_fonction(int parametre) { /* ... */ }
-
-std::thread t(ma_fonction, 42);  // crée et démarre le thread
-t.join();                         // attend que le thread se termine
-```
-
-**`join()`** est indispensable : sans lui, le programme principal peut se terminer
-avant les threads, causant un comportement indéfini.
+Three successive optimizations were applied across multiple tasks:
+1. **BT Transposition** — cache-friendly memory access (eliminates column-jumping cache misses)
+2. **Float + AVX/FMAD** — hardware-level floating-point acceleration
+3. **64-byte Memory Alignment** — eliminates cache line splits via `_mm_malloc`
 
 ---
 
-### 4. Passage de paramètres par pointeur (slides 5–10)
+## Tasks Summary
 
-Les threads reçoivent les matrices par pointeur.  
-Passer un pointeur permet au thread de **modifier directement la mémoire partagée**
-(ici la matrice C), sans copier les données.
+### Task 1 — Sequential
 
-```cpp
-// Le thread reçoit l'adresse de A, B, C — il peut lire/écrire directement
-void compute_line(const int* A, const int* B, int* C, int N, int i) { ... }
-```
+Baseline single-threaded matrix multiplication. Complexity: **O(N³)**.
 
-Ce mécanisme est expliqué dans le cours via le **passage par variable** (vs passage par valeur).
+- CPU usage: ~100% (fully CPU-bound)
+- Memory scales as expected with N²
+- **2000×2000:** 16.02s (Linux) / 16.35s (Windows)
+- Confirms the need for parallelization — 15 out of 16 CPU cores sit idle
 
 ---
 
-### 5. Pourquoi un thread par ligne ? (slides 50–52)
+### Task 1.1 — Optimization 1: Transposed Matrix BT
 
-- **TP2** : un thread par **case** de C → N² threads, overhead énorme pour de grands N
-- **TP3** : un thread par **ligne** de C → N threads, chaque thread calcule N produits scalaires
-- **TP4** : nombre de threads choisi par l'utilisateur, avec distribution alternée ou contiguë
+Instead of reading columns of B (cache-unfriendly), a transposed matrix BT is created and rows are read instead — eliminating cache misses.
 
-Plus le grain de parallélisme est fin (TP2), plus le coût de création/synchronisation des threads
-est élevé par rapport au travail utile. Le TP3 est un bon compromis.
+> **Expected gain: ~2–3×**
 
----
-
-### 6. Pas de mutex ici — pourquoi ? (slides 31–37)
-
-Le cours explique le problème de **data race** : quand deux threads accèdent
-à la même variable en même temps, le résultat est imprévisible.
-
-Dans ce TP, **chaque thread écrit sur une ligne différente de C**.  
-Il n'y a donc **aucun accès concurrent** à la même case mémoire → pas besoin de mutex.
-
-Si deux threads écrivaient sur la même case (comme en TP2 mal conçu), il faudrait protéger
-avec un `std::mutex` :
-
-```cpp
-std::mutex mtx;
-mtx.lock();
-C[i][j] += ...;   // section critique
-mtx.unlock();
-```
+- **2000×2000:** 3.14s (Linux) / 3.43s (Windows)
+- **Speedup vs naive: ~5×**
+- Memory usage increases slightly due to BT matrix
 
 ---
 
-## Structure du code
+### Task 1.2 — Optimization 2: Float + AVX/FMAD
 
-```
-main()
- ├── Lecture de N
- ├── Allocation de A, B, C  (new int[N*N])
- ├── Remplissage de A et B  (valeurs aléatoires)
- ├── start = chrono::now()
- ├── Création de N threads  (un par ligne i de C)
- │    └── chaque thread appelle compute_line(A, B, C, N, i)
- ├── join() sur tous les threads
- ├── end = chrono::now()  →  affichage durée
- └── delete[] A, B, C
-```
+Data converted from `int` to `float` to leverage AVX units and the **FMAD** (Fused Multiply-Add) instruction — performing multiply + add in a single instruction.
 
-```
-compute_line(A, B, C, N, i)
- └── pour chaque colonne j :
-      └── C[i*N+j] = somme sur k de A[i*N+k] * B[k*N+j]
-```
+> **Expected gain: ~1.5×** — actual results were slower due to compiler not fully vectorizing without explicit flags (`-mavx2`, `-mfma`)
+
+- **2000×2000:** 6.85s (Linux) / 7.03s (Windows)
+- Slower than optimization 1 — AVX benefits depend heavily on compiler vectorization
 
 ---
 
-## Compilation et exécution
+### Task 1.3 — All Three Optimizations Combined
 
-```bash
-# Compiler (C++20 recommandé par le cours, C++11 minimum)
-g++ -std=c++20 -O2 -pthread main.cpp -o tp3
+BT transposition + float/AVX/FMAD + 64-byte memory alignment via `_mm_malloc`.
 
-# Exécuter
-./tp3
-# Entre une valeur entier N: 500
-```
+> **Best sequential result of the entire lab**
 
-> Le flag `-pthread` est nécessaire pour linker la bibliothèque des threads sous Linux.
+- **2000×2000:** **0.68s (Linux)** / 7.33s (Windows)
+- **Speedup vs naive on Linux: ~24×**
+- CPU usage on Linux exceeds 1100% → compiler successfully triggered AVX vectorization
+- Windows sees minimal benefit — GCC + Linux kernel interact far more effectively with alignment
 
 ---
 
-## Points d'attention signalés par le cours
+### Task 2 — One Thread per Element
 
-| Problème | Explication (cours) | Solution dans ce TP |
-|----------|---------------------|---------------------|
-| Fuite mémoire | Slide 19 : toujours libérer | `delete[] A/B/C` en fin de main |
-| Thread-safety du générateur aléatoire | Slide 73 : `rand()` non thread-safe | Le remplissage se fait **avant** les threads |
-| Deadlock | Slide 35 : deux tâches s'attendent | Pas de mutex ici → pas de risque |
-| Segmentation fault | Slide 20 : accès mémoire non alloué | Vérification que N > 0 avant allocation |
-| `join()` oublié | Slide 27 : programme ne termine jamais | `join()` dans une boucle sur le vecteur de threads |
+Creates N² threads simultaneously — one per matrix element.
+
+- Massive overhead and instability beyond 100×100 on Linux
+- Windows crashed beyond 1500×1500
+- **Not practical** — too much thread creation/management cost cancels all parallelism gains
 
 ---
 
-## Résumé des concepts du cours mobilisés
+### Task 3 — One Thread per Row
 
-```
-Rappel C/C++                    Multithreading
-─────────────────────           ──────────────────────────────
-• Adresses & pointeurs          • std::thread (C++11)
-• Passage par variable          • join()
-• new / delete[]                • Pas de data race si zones disjointes
-• sizeof / accès tableau 1D     • std::chrono pour mesurer
-• Allocation dynamique N×N      • Un thread = une ligne de C
-```
+One thread per row (N threads instead of N²).
+
+- **2000×2000:** 2.1s (Linux) / 4.32s (Windows)
+- **Speedup vs sequential: ~8×**
+- CPU usage reaches 1200%+ — cores effectively utilized
+- Stable and complete results for all matrix sizes
+
+---
+
+### Task 4 — Dynamic Thread Allocation
+
+User chooses the number of threads. Both **alternating** and **contiguous** row distribution modes tested.
+
+Values tested: `[0.25T, 0.5T, 0.75T, T, 1.5T, 2T]` where T = 16 logical threads
+
+- **Optimal: T=16** for all matrix sizes and both distributions
+- Beyond T=16, context switching overhead degrades performance
+- **2000×2000 with 16 threads:** 0.518s (Linux) / 4.34s (Windows) → factor of **8×** between OSes
+- Alternating vs contiguous: performance nearly identical in all configurations
+
+---
+
+### Task 4.1 — Optimization 1: BT Transposition
+
+BT transposition applied to the multithreaded version.
+
+- **2000×2000, 16 threads:** 0.349s (Linux) / 0.382s (Windows)
+- **Speedup vs unoptimized TP4: ~1.5×**
+- Confirms cache-friendly access improves performance independently of parallelism level
+
+---
+
+### Task 4.2 — Optimization 2: Float + AVX/FMAD
+
+Float conversion added on top of BT transposition.
+
+- **2000×2000, 16 threads:** 0.461s (Linux) / 0.529s (Windows)
+- Slightly slower than optimization 1 — compiler vectorization not fully triggered without explicit flags
+- CPU usage exceeds 1500% on Linux for large matrices
+
+---
+
+### Task 4.3 — Optimization 3: 64-byte Memory Alignment
+
+Data aligned on 64-byte boundaries using `_mm_malloc(..., 64)`.
+
+> **Expected gain: ~1.2×**
+
+- **2000×2000, 16 threads:** 0.559s (Linux) / 0.563s (Windows)
+- Smallest and most marginal gain — can be masked by measurement variability
+- Nearly identical results between Linux and Windows → alignment benefits both equally
+
+**Summary of all multithreaded optimizations (2000×2000, Linux, 16 threads):**
+
+| Version | Time (s) |
+|---|---|
+| TP4 no optimization | 0.518 |
+| TP4 optim 1 (BT) | 0.349 |
+| TP4 optim 2 (float + AVX) | 0.461 |
+| TP4 optim 3 (64B alignment) | 0.559 |
+
+> Optimization 1 (BT transposition) is by far the most impactful — it directly addresses the main bottleneck: **cache misses**.
+
+---
+
+### Task 5 — CUDA on GPU
+
+Matrix multiplication on GPU using CUDA — one thread per matrix element.
+
+- Tested configurations: 128, 256, 512, 1024 blocks × threads
+- **Computation times drop to fractions of a millisecond**
+- **Key finding:** memory transfers (CPU↔GPU) often represent **2–5× the computation time itself**
+- Windows faster than Linux for pure computation — likely due to GPU driver differences
+- `cudaDeviceSynchronize()` essential before timing — without it, measurements are completely misleading
+
+---
+
+### Task 5.1 — CUDA with Transpose Optimization (BT)
+
+BT transposition applied on GPU — rows of BT read instead of columns of B, improving **memory coalescing**.
+
+> Creation and deletion of BT included in the compute time measurement, as required.
+
+- **2000×2000 without transfers:** ~0.025ms → ~0.010ms (Linux) → **speedup ~2.5×**
+- Small matrices (100×100): gain is negligible or slightly negative — BT creation cost not amortized
+- Windows: less impact since base times were already very low
+- Confirms: **memory organization on GPU has as much impact as thread count**
+
+---
+
+## Key Results
+
+| Task | Method | Time — 2000×2000 (Linux) |
+|---|---|---|
+| Task 1 | Sequential (naive) | 16.02s |
+| Task 1.1 | Sequential + BT | 3.14s |
+| Task 1.2 | Sequential + BT + float | 6.85s |
+| Task 1.3 | Sequential + all 3 optims | **0.68s** |
+| Task 3 | 1 thread/row | 2.1s |
+| Task 4 | 16 threads (dynamic) | 0.518s |
+| Task 4.1 | 16 threads + BT | 0.349s |
+| Task 5 | CUDA (no transfer) | ~0.009ms |
+| Task 5.1 | CUDA + BT (no transfer) | ~0.010ms |
+
+---
+
+## General Conclusion
+
+This project illustrates that **performance optimization is never a one-size-fits-all solution**. Each layer of optimization — algorithmic, memory-related, or hardware-specific — contributes differently depending on problem size and execution context.
+
+The single most important lesson from this lab:
+
+> **Before adding more parallelism, always make sure the memory access pattern is efficient.**
+
+This principle explained the most impactful results observed on both CPU and GPU — from the 5× speedup of BT transposition in sequential mode, to the 2.5× gain from memory coalescing on the GPU.
